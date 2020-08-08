@@ -1,0 +1,38 @@
+---
+on: 
+  push:
+    branches:
+      - master
+name: Build Release
+jobs:
+  release:
+    strategy:
+      matrix:
+        goos: [darwin, linux, windows]
+        goarch: [amd64]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '^1.13.1' 
+    - name: setup env
+      run: |
+        echo "::set-env name=GOPATH::$(dirname $GITHUB_WORKSPACE)/go"
+        echo "::set-env name=GOBIN::$(dirname $GITHUB_WORKSPACE)/go/bin"
+        echo "::add-path::$(dirname $GITHUB_WORKSPACE)/bin"
+      shell: bash
+    - uses: actions/checkout@v2
+    - run: |
+        mkdir -p ./artifacts
+        go get .
+        GOOS=${{ matrix.goos }}  GOARCH=${{ matrix.goarch }} CGO_ENABLED=0  go build -o artifacts/dnese .
+        sha256sum artifacts/dnese  | cut -d " " -f 1 > artifacts/sha256.txt
+        chmod +x artifacts/dnese
+    - uses: actions/upload-artifact@v2
+      with:
+        name: dnese_${{ matrix.goos }}_${{ matrix.goarch }}
+        path: ./artifacts/dnese
+    - uses: actions/upload-artifact@v2
+      with:
+        name: dnese_${{ matrix.goos }}_${{ matrix.goarch }}_sha256.txt
+        path: ./artifacts/sha256.txt
